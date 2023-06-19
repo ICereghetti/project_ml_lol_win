@@ -13,10 +13,10 @@ import cProfile
 from itertools import chain
 from ast import literal_eval  # For safely evaluating string literals as lists
 from github import Github
+import json
 
 def update_repository():
     # GitHub credentials
-    access_token = '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'  # Replace with your access token
     repo_owner = 'ICereghetti'  # Replace with your username
     repo_name = 'project_ml_lol_win'  # Replace with your repository name
 
@@ -48,6 +48,15 @@ def update_repository():
 
     print("Repository updated successfully!")
     
+# Specify the path to the JSON file
+git_credential = "git_credential.json"
+
+# Load the JSON object from the file
+with open(git_credential, "r") as file:
+    credentials = json.load(file)
+
+access_token = credentials["access_token"]
+
 update_repository()
 
 ##################### 2-LIMPIO DATA DE PARTIDAS #######################
