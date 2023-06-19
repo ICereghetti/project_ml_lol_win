@@ -147,14 +147,19 @@ def update_repository():
     # Get the branch reference
     branch_ref = repo.get_branch(default_branch).commit.sha
 
+        # Read the updated file contents
+    with open('code_model_1.py', 'r') as file:
+        updated_contents = file.read()
+
     # Create a new file commit
     commit = repo.create_git_commit(
         "Update from script",
-        "YOUR_FILE_NAME",
-        "YOUR_COMMIT_MESSAGE",
+        "code_model_1.py",
+        "Commiteado con python",
         branch_ref,
-        "YOUR_FILE_CONTENTS"
+        updated_contents
     )
+
 
     # Update the branch reference
     ref = repo.get_git_ref(f'heads/{default_branch}')
