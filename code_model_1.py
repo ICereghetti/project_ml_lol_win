@@ -12,7 +12,43 @@ from tqdm import tqdm
 import cProfile
 from itertools import chain
 from ast import literal_eval  # For safely evaluating string literals as lists
+from github import Github
 
+def update_repository():
+    # GitHub credentials
+    access_token = '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'  # Replace with your access token
+    repo_owner = 'ICereghetti'  # Replace with your username
+    repo_name = 'project_ml_lol_win'  # Replace with your repository name
+
+    # Create a GitHub instance using your access token
+    g = Github(access_token)
+
+    # Get the repository
+    repo = g.get_user(repo_owner).get_repo(repo_name)
+
+    # Get the default branch
+    default_branch = repo.default_branch
+
+    # Get the branch reference
+    branch_ref = repo.get_branch(default_branch).commit.sha
+
+        # Read the updated file contents
+    with open('code_model_1.py', 'r') as file:
+        updated_contents = file.read()
+
+    file = repo.get_contents('code_model_1.py', ref=branch_ref)
+
+    # Update the file
+    repo.update_file(
+        file.path,
+        "Commiteado con python",
+        updated_contents,
+        file.sha
+    )
+
+    print("Repository updated successfully!")
+    
+update_repository()
 
 ##################### 2-LIMPIO DATA DE PARTIDAS #######################
 
@@ -120,58 +156,65 @@ game_data_summary.columns = ['_'.join([str(col) for col in cols]) for cols in ga
 
 winners=game_data[game_data['win']==1][['game','team']].drop_duplicates()
 
-winners['result']=np.where(winners['team']=='team_red',1,0)
+winners['result']=np.where(winners['team']=='red',1,0)
 
 game_data_summary=pd.merge(game_data_summary,winners[['game','result']],how='left',on='game')
 
 
 ############################ MODELO BY POSITION
 
-from github import Github
-
-def update_repository():
-    # GitHub credentials
-    access_token = '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'  # Replace with your access token
-    repo_owner = 'ICereghetti'  # Replace with your username
-    repo_name = 'project_ml_lol_win'  # Replace with your repository name
-
-    # Create a GitHub instance using your access token
-    g = Github(access_token)
-
-    # Get the repository
-    repo = g.get_user(repo_owner).get_repo(repo_name)
-
-    # Get the default branch
-    default_branch = repo.default_branch
-
-    # Get the branch reference
-    branch_ref = repo.get_branch(default_branch).commit.sha
-
-        # Read the updated file contents
-    with open('code_model_1.py', 'r') as file:
-        updated_contents = file.read()
-
-    # Create a new file commit
-    commit = repo.create_git_commit(
-        "Update from script",
-        "code_model_1.py",
-        "Commiteado con python",
-        branch_ref,
-        updated_contents
-    )
 
 
-    # Update the branch reference
-    ref = repo.get_git_ref(f'heads/{default_branch}')
-    ref.edit(commit.sha)
+red_1 = game_data_summary.filter(regex='red_1_|^result$')
 
-    print("Repository updated successfully!")
+red_1['side_red']=1
 
-# Your existing code goes here
+red_1.columns=red_1.columns.str.replace('red_1_', '')
 
-# Call the update_repository() function at the end of your code's execution
-update_repository()
-    
-update_repository()
+blue_1 = game_data_summary.filter(regex='blue_1_|^result$')
+
+blue_1['side_red']=0
+
+blue_1.columns=blue_1.columns.str.replace('blue_1_', '')
 
 
+df=pd.concat([red_1,blue_1])
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import accuracy_score
+
+X = df.drop('result', axis=1)  # Remove the target column from the features
+y = df['result']               # Select the target column
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features
+scaler = StandardScaler()
+X_train_std = scaler.fit_transform(X_train)
+X_test_std = scaler.transform(X_test)
+
+# Normalize the features
+normalizer = MinMaxScaler()
+X_train_norm = normalizer.fit_transform(X_train_std)
+X_test_norm = normalizer.transform(X_test_std)
+
+# Initialize the logistic regression model
+#model = LogisticRegression()
+model = LinearRegression()
+
+
+
+# Train the model on the normalized features
+model.fit(X_train_norm, y_train)
+
+# Predict the target variable for the normalized test data
+y_pred = model.predict(X_test_norm)
+
+# Evaluate the model's accuracy
+accuracy = accuracy_score(y_test, y_pred)
+prediction_scores = (y_pred - y_pred.min()) / (y_pred.max() - y_pred.min()) * 100
+
+print('Accuracy:', accuracy)
