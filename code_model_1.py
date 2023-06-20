@@ -1,19 +1,18 @@
 ##################### PREWORK #######################
 
-import requests
 import numpy as np
 import pandas as pd
-from time import sleep
 import datetime 
-from datetime import timedelta
 import time
-import os
-from tqdm import tqdm
-import cProfile
-from itertools import chain
-from ast import literal_eval  # For safely evaluating string literals as lists
 from github import Github
 import json
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.metrics import accuracy_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from xgboost import XGBClassifier
 
 def update_repository():
     # GitHub credentials
@@ -189,11 +188,7 @@ blue_1.columns=blue_1.columns.str.replace('blue_1_', '')
 
 df=pd.concat([red_1,blue_1])
 
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import accuracy_score
+############################### MODEL
 
 X = df.drop('result', axis=1)  # Remove the target column from the features
 y = df['result']               # Select the target column
@@ -210,19 +205,26 @@ normalizer = MinMaxScaler()
 X_train_norm = normalizer.fit_transform(X_train_std)
 X_test_norm = normalizer.transform(X_test_std)
 
-# Initialize the logistic regression model
-#model = LogisticRegression()
-model = LinearRegression()
+models = [
+    ("Logistic Regression", LogisticRegression()),
+    ("Decision Tree", DecisionTreeClassifier()),
+    ("Random Forest", RandomForestClassifier()),
+    ("Gradient Boosting", GradientBoostingClassifier()),
+    ("XGBoost", XGBClassifier())
+]
 
+scores=[]
 
-# Train the model on the normalized features
-model.fit(X_train_norm, y_train)
-
-# Predict the target variable for the normalized test data
-y_pred = model.predict(X_test_norm)
-
-# Evaluate the model's accuracy
-accuracy = accuracy_score(y_test, y_pred)
-prediction_scores = (y_pred - y_pred.min()) / (y_pred.max() - y_pred.min()) * 100
-
-print('Accuracy:', accuracy)
+for name, classifier in models:
+ 
+    name=models[1][0]
+    classifier=models[1][1]
+    # Train the classifier
+    classifier.fit(X_train_norm, y_train)
+    
+    # Make predictions on the test set
+    y_pred = classifier.predict(X_test_norm)
+    
+    # Evaluate the accuracy of the classifier
+    accuracy = accuracy_score(y_test, y_pred)
+    scores=scores+[accuracy]
