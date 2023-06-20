@@ -215,7 +215,6 @@ X_test_norm = normalizer.transform(X_test_std)
 model = LinearRegression()
 
 
-
 # Train the model on the normalized features
 model.fit(X_train_norm, y_train)
 
