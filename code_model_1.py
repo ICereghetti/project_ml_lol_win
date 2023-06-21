@@ -13,6 +13,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from xgboost import XGBClassifier
+from sklearn.linear_model import LinearRegression
+from tqdm import tqdm
 
 def update_repository():
     # GitHub credentials
@@ -172,59 +174,97 @@ game_data_summary=pd.merge(game_data_summary,winners[['game','result']],how='lef
 ############################ MODELO BY POSITION
 
 
+feature_importances_df=pd.DataFrame(columns=['victories_overall', 
+       'winrate_overall', 'winrate_last_5_games',
+       'winrate_last_10_games', 'winrate_last_20_games',
+       'winrate_last_50_games', 'victories_position', 'winrate_position',
+       'pickrate_position', 'victories_champ', 'winrate_champ',
+       'pickrate_champ'])
 
-red_1 = game_data_summary.filter(regex='red_1_|^result$')
-
-red_1['side_red']=1
-
-red_1.columns=red_1.columns.str.replace('red_1_', '')
-
-blue_1 = game_data_summary.filter(regex='blue_1_|^result$')
-
-blue_1['side_red']=0
-
-blue_1.columns=blue_1.columns.str.replace('blue_1_', '')
-
-
-df=pd.concat([red_1,blue_1])
-
-############################### MODEL
-
-X = df.drop('result', axis=1)  # Remove the target column from the features
-y = df['result']               # Select the target column
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Standardize the features
-scaler = StandardScaler()
-X_train_std = scaler.fit_transform(X_train)
-X_test_std = scaler.transform(X_test)
-
-# Normalize the features
-normalizer = MinMaxScaler()
-X_train_norm = normalizer.fit_transform(X_train_std)
-X_test_norm = normalizer.transform(X_test_std)
-
-models = [
-    ("Logistic Regression", LogisticRegression()),
-    ("Decision Tree", DecisionTreeClassifier()),
-    ("Random Forest", RandomForestClassifier()),
-    ("Gradient Boosting", GradientBoostingClassifier()),
-    ("XGBoost", XGBClassifier())
-]
-
-scores=[]
-
-for name, classifier in models:
- 
-    name=models[1][0]
-    classifier=models[1][1]
-    # Train the classifier
-    classifier.fit(X_train_norm, y_train)
+for position in tqdm(range(1,6,1)):
     
-    # Make predictions on the test set
-    y_pred = classifier.predict(X_test_norm)
+    regex_red=f'red_{position}_|^result$'
     
-    # Evaluate the accuracy of the classifier
-    accuracy = accuracy_score(y_test, y_pred)
-    scores=scores+[accuracy]
+    red = game_data_summary.filter(regex=regex_red)
+    
+    red['side_red']=1
+    
+    red_column=f'red_{position}_'
+    red.columns=red.columns.str.replace(red_column, '')
+    
+    regex_blue=f'blue_{position}_|^result$'
+    blue = game_data_summary.filter(regex=regex_blue)
+    
+    blue['side_red']=0
+    
+    blue_column=f'blue_{position}_'
+    blue.columns=blue.columns.str.replace(blue_column, '')
+    
+    
+    df=pd.concat([red,blue])
+    
+    
+    ############################### MODEL
+        
+    df = df.drop('side_red', axis=1)  # Remove the target column from the features
+    
+    X = df.drop('result', axis=1)  # Remove the target column from the features
+    y = df['result']               # Select the target column
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Standardize the features
+    scaler = StandardScaler()
+    X_train_std = scaler.fit_transform(X_train)
+    X_test_std = scaler.transform(X_test)
+    
+    # Normalize the features
+    normalizer = MinMaxScaler()
+    X_train_norm = normalizer.fit_transform(X_train_std)
+    X_test_norm = normalizer.transform(X_test_std)
+    
+    
+    models = [
+        ("Logistic Regression", LogisticRegression()),
+        ("Decision Tree", DecisionTreeClassifier()),
+        ("Random Forest", RandomForestClassifier()),
+        ("Gradient Boosting", GradientBoostingClassifier())
+    ]
+    
+    scores=[]
+    importance=[]
+    modelos=[]
+    for name, classifier in models:
+        modelos=modelos+[name]
+        # Train the classifier
+        classifier.fit(X_train_norm, y_train)
+        
+        # Make predictions on the test set
+        y_pred = classifier.predict(X_test_norm)
+        
+        # Evaluate the accuracy of the classifier
+        accuracy = accuracy_score(y_test, y_pred)
+        scores=scores+[accuracy]
+        try:
+            importance_case=classifier.coef_
+        except Exception:
+            importance_case = classifier.feature_importances_
+        importance=importance+[importance_case]
+    
+    feature_importances_df_position=pd.DataFrame(columns=X_train.columns)
+    
+    feature_importances_df_position=pd.concat([feature_importances_df_position,pd.DataFrame(importance[0].tolist(),columns=X_train.columns)])
+    
+    feature_importances_df_position=pd.concat([feature_importances_df_position,pd.DataFrame([importance[1].tolist()],columns=X_train.columns)])
+    
+    feature_importances_df_position=pd.concat([feature_importances_df_position,pd.DataFrame([importance[2].tolist()],columns=X_train.columns)])
+    
+    feature_importances_df_position=pd.concat([feature_importances_df_position,pd.DataFrame([importance[3].tolist()],columns=X_train.columns)])
+    
+    feature_importances_df_position.index=modelos
+    
+    feature_importances_df_position['score']=scores
+    
+    feature_importances_df_position['position']=position
+
+    feature_importances_df=pd.concat([feature_importances_df,feature_importances_df_position])
