@@ -64,6 +64,8 @@ update_repository()
 
 game_data=pd.read_csv('partidas_analized_historico.csv')
 
+game_data=game_data.drop_duplicates()
+
 game_data['game_date']=np.NaN
 
 today = datetime.date.today()
@@ -129,6 +131,8 @@ player_resultados_champ.columns = ['victories_champ', 'winrate_champ']
 player_resultados_champ['pickrate_champ'] = player_resultados_champ.groupby(['puuid'])['victories_champ'].transform(lambda x: x / x.sum() * 100)
 
 #### number
+
+
 
 #### Player number
 
