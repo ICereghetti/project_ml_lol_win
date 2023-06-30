@@ -15,6 +15,8 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from xgboost import XGBClassifier
 from sklearn.linear_model import LinearRegression
 from tqdm import tqdm
+from sklearn.feature_selection import RFE
+
 
 def update_repository():
     # GitHub credentials
@@ -229,7 +231,7 @@ for position in tqdm(range(1,6,1)):
     
     
     models = [
-        ("Logistic Regression", LogisticRegression()),
+        ("Logistic Regression", LogisticRegression(max_iter=1000)),
         ("Decision Tree", DecisionTreeClassifier()),
         ("Random Forest", RandomForestClassifier()),
         ("Gradient Boosting", GradientBoostingClassifier())
@@ -238,24 +240,46 @@ for position in tqdm(range(1,6,1)):
     scores=[]
     importance=[]
     modelos=[]
+    feature_weights = {}
     for name, classifier in models:
-        modelos=modelos+[name]
-        # Train the classifier
-        classifier.fit(X_train_norm, y_train)
+        
+        modelos.append(name)
+        rfe = RFE(estimator=classifier, n_features_to_select=5)
+
+
+        X_train_selected = rfe.fit_transform(X_train_norm, y_train)
+
+        classifier.fit(X_train_selected, y_train)
+        
+        X_test_selected = rfe.transform(X_test_norm)
         
         # Make predictions on the test set
-        y_pred = classifier.predict(X_test_norm)
+        y_pred = classifier.predict(X_test_selected)
         
         # Evaluate the accuracy of the classifier
         accuracy = accuracy_score(y_test, y_pred)
         scores=scores+[accuracy]
         try:
             importance_case=classifier.coef_
+            
         except Exception:
             importance_case = classifier.feature_importances_
-        importance=importance+[importance_case]
+
+        selected_feature_indices = rfe.get_support(indices=True)
+        
+        # Get the names and weights of the selected features
+        selected_features = X.columns[selected_feature_indices]
+
+        
+        if name!='Logistic Regression':
+            weights = importance_case
+        else:
+            weights = importance_case[0]
+
+        # Create a dictionary mapping feature names to weights
+        feature_weights[name] = dict(zip(list(selected_features),weights.tolist()))
     
-    feature_importances_df_position=pd.DataFrame(columns=X_train.columns)
+    feature_importances_df_position=pd.DataFrame([[position,scores,feature_weights]],columns=['position','scores','columns_weights'])
     
     feature_importances_df_position=pd.concat([feature_importances_df_position,pd.DataFrame(importance[0].tolist(),columns=X_train.columns)])
     
